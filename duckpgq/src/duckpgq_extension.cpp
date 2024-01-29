@@ -16,6 +16,8 @@
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 #include "duckdb/parser/statement/copy_statement.hpp"
+#include "duckdb/parser/statement/prepare_statement.hpp"
+
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 
 #include "duckdb/parser/statement/extension_statement.hpp"
@@ -99,7 +101,7 @@ BoundStatement duckpgq_bind(ClientContext &context, Binder &binder,
     throw BinderException("Registered state not found");
   }
 
-  auto duckpgq_state = (DuckPGQState *)lookup->second.get();
+  auto duckpgq_state = dynamic_cast<DuckPGQState *>(lookup->second.get());
   auto duckpgq_binder = Binder::CreateBinder(context);
   auto duckpgq_parse_data =
       dynamic_cast<DuckPGQParseData *>(duckpgq_state->parse_data.get());
@@ -111,11 +113,11 @@ BoundStatement duckpgq_bind(ClientContext &context, Binder &binder,
 
 ParserExtensionPlanResult duckpgq_handle_statement(SQLStatement *statement, DuckPGQState &duckpgq_state) {
   if (statement->type == StatementType::SELECT_STATEMENT) {
-    auto select_statement = dynamic_cast<SelectStatement *>(statement);
-    auto select_node = dynamic_cast<SelectNode *>(select_statement->node.get());
-    auto from_table_function =
+    const auto select_statement = dynamic_cast<SelectStatement *>(statement);
+    const auto select_node = dynamic_cast<SelectNode *>(select_statement->node.get());
+    const auto from_table_function =
         dynamic_cast<TableFunctionRef *>(select_node->from_table.get());
-    auto function =
+    const auto function =
         dynamic_cast<FunctionExpression *>(from_table_function->function.get());
     if (function->function_name == "duckpgq_match") {
       duckpgq_state.transform_expression =
@@ -125,8 +127,8 @@ ParserExtensionPlanResult duckpgq_handle_statement(SQLStatement *statement, Duck
     throw Exception("use duckpgq_bind instead");
   }
   if (statement->type == StatementType::CREATE_STATEMENT) {
-    auto &create_statement = statement->Cast<CreateStatement>();
-    auto create_property_graph = dynamic_cast<CreatePropertyGraphInfo*>(create_statement.info.get());
+    const auto &create_statement = statement->Cast<CreateStatement>();
+    const auto create_property_graph = dynamic_cast<CreatePropertyGraphInfo*>(create_statement.info.get());
     if (create_property_graph) {
       ParserExtensionPlanResult result;
       result.function = CreatePropertyGraphFunction();
@@ -166,6 +168,10 @@ ParserExtensionPlanResult duckpgq_handle_statement(SQLStatement *statement, Duck
   if (statement->type == StatementType::INSERT_STATEMENT) {
     auto &insert_statement = statement->Cast<InsertStatement>();
     duckpgq_handle_statement(insert_statement.select_statement.get(), duckpgq_state);
+  }
+  if (statement->type == StatementType::PREPARE_STATEMENT) {
+    auto &prepare_statement = statement->Cast<PrepareStatement>();
+    duckpgq_handle_statement(prepare_statement.statement.get(), duckpgq_state);
   }
 
   // Preferably throw NotImplementedExpection here, but only BinderExceptions are caught properly on MacOS right now
