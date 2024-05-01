@@ -8,6 +8,7 @@
 #include "duckdb/parser/simplified_token.hpp"
 #include "duckpgq/compressed_sparse_row.hpp"
 #include "duckdb/parser/parsed_data/create_property_graph_info.hpp"
+#include "duckdb/storage/storage_extension.hpp"
 
 namespace duckdb {
 
@@ -66,6 +67,27 @@ struct DuckPGQParseData : ParserExtensionParseData {
 
   explicit DuckPGQParseData(unique_ptr<SQLStatement> statement)
       : statement(std::move(statement)) {}
+};
+
+unique_ptr<Catalog> duckpgq_attach(StorageExtensionInfo *storage_info, ClientContext &context,
+                                   AttachedDatabase &db, const string &name, AttachInfo &info,
+                                   AccessMode access_mode);
+
+unique_ptr<TransactionManager> duckpgq_create_transaction_manager(StorageExtensionInfo *storage_info,
+                                                                AttachedDatabase &db, Catalog &catalog);
+
+struct DuckPGQStorageExtensionInfo : public StorageExtensionInfo {
+public:
+  DuckPGQStorageExtensionInfo() : StorageExtensionInfo(){};
+  ~DuckPGQStorageExtensionInfo() override = default;
+};
+
+class DuckPGQStorageExtension : public StorageExtension {
+  DuckPGQStorageExtension() : StorageExtension() {
+    attach = duckpgq_attach; // Function to attach to a database
+    create_transaction_manager = duckpgq_create_transaction_manager; // Function to create a transaction manager
+    storage_info = make_shared<DuckPGQStorageExtensionInfo>();
+  }
 };
 
 class DuckPGQState : public ClientContextState {
