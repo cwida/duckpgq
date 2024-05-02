@@ -156,17 +156,16 @@ CreatePropertyGraphFunction::CreatePropertyGraphBind(
         throw Exception(ExceptionType::INVALID,"Primary key " + pk + " does not exist in table " + edge_table->destination_reference);
       }
     }
-
-
   }
+  PropertyGraphsTable::GetOrCreate(context, "duckpgq_property_graph_information", info->catalog)
+      ->InitializeTable(context, info->catalog);
   return make_uniq<CreatePropertyGraphBindData>(info);
 }
 
 unique_ptr<GlobalTableFunctionState>
 CreatePropertyGraphFunction::CreatePropertyGraphInit(
     ClientContext &context, TableFunctionInitInput &input) {
-  PropertyGraphsTable::GetOrCreate(context, "duckpgq_property_graph_information")
-      ->InitializeTable(context);
+
   return make_uniq<CreatePropertyGraphGlobalData>();
 }
 

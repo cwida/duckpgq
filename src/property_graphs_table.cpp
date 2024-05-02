@@ -2,20 +2,18 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 
-
-
 namespace duckdb {
 
-TableCatalogEntry &PropertyGraphsTable::GetPropertyGraphTable(ClientContext &context) {
-  auto &catalog = Catalog::GetCatalog(context, SYSTEM_CATALOG);
+TableCatalogEntry &PropertyGraphsTable::GetPropertyGraphTable(ClientContext &context, const string &catalog_name) {
+  auto &catalog = Catalog::GetCatalog(context, catalog_name);
   auto &table_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
   return table_entry;
 }
 
-shared_ptr<PropertyGraphsTable> PropertyGraphsTable::GetOrCreate(ClientContext &context, const string &table_name) {
+shared_ptr<PropertyGraphsTable> PropertyGraphsTable::GetOrCreate(ClientContext &context, const string &table_name, const string &catalog_name) {
   auto key = "PROPERTY_GRAPH_TABLE_CACHE_ENTRY_" + StringUtil::Upper(table_name);
   auto &cache = ObjectCache::GetObjectCache(context);
-  auto &catalog = Catalog::GetCatalog(context, SYSTEM_CATALOG);
+  auto &catalog = Catalog::GetCatalog(context, catalog_name);
 
   auto property_graphs_table_exist = catalog.GetEntry(context, CatalogType::TABLE_ENTRY, DEFAULT_SCHEMA, table_name,
                                              OnEntryNotFound::RETURN_NULL) != nullptr;
@@ -29,11 +27,11 @@ shared_ptr<PropertyGraphsTable> PropertyGraphsTable::GetOrCreate(ClientContext &
   return cache.GetOrCreate<PropertyGraphsTable>(key, table_name);
 }
 
-void PropertyGraphsTable::InitializeTable(ClientContext &context) {
-  auto &catalog = Catalog::GetCatalog(context, SYSTEM_CATALOG);
+void PropertyGraphsTable::InitializeTable(ClientContext &context, const string &catalog_name) {
+  auto &catalog = Catalog::GetCatalog(context, catalog_name);
 
   {
-    auto info = make_uniq<CreateTableInfo>(SYSTEM_CATALOG, DEFAULT_SCHEMA, table_name);
+    auto info = make_uniq<CreateTableInfo>(catalog_name, DEFAULT_SCHEMA, table_name);
     info->on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
     // 0. Property graph name
     info->columns.AddColumn(ColumnDefinition("property_graph_name", LogicalType::VARCHAR));

@@ -6,16 +6,16 @@ namespace duckdb {
 
 class PropertyGraphsTable : public ObjectCacheEntry {
 public:
-    PropertyGraphsTable(string table_name)
-            : table_name(std::move(table_name)), schema(DEFAULT_SCHEMA) {
+    PropertyGraphsTable(string table_name_)
+            : table_name(std::move(table_name_)), schema(DEFAULT_SCHEMA) {
         }
         string table_name;
         const string schema;
 
-        static shared_ptr<PropertyGraphsTable> GetOrCreate(ClientContext &context, const string &table_name);
+        static shared_ptr<PropertyGraphsTable> GetOrCreate(ClientContext &context, const string &table_name, const string &catalog_name);
 
-        void InitializeTable(ClientContext &context);
-        TableCatalogEntry &GetPropertyGraphTable(ClientContext &context);
+        void InitializeTable(ClientContext &context, const string &catalog_name);
+        TableCatalogEntry &GetPropertyGraphTable(ClientContext &context, const string &catalog_name);
 
         idx_t GetCurrentFileIndex(idx_t query_id);
 
