@@ -182,6 +182,9 @@ void CreatePropertyGraphFunction::CreatePropertyGraphFunc(
   }
   auto duckpgq_state = (DuckPGQState *)lookup->second.get();
 
+  auto property_graphs_table = PropertyGraphsTable::GetOrCreate(context, "duckpgq_property_graph_information", info->catalog);
+  auto &registered_property_graphs_table = property_graphs_table->GetPropertyGraphTable(context, info->catalog);
+  InternalAppender property_graph_appender(context, registered_property_graphs_table);
   // Create the property graphs table or get it if it already exists.
 
   // InternalAppender pg_appender(context, create_table);
