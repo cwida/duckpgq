@@ -2,6 +2,7 @@
 #include "duckdb/parser/statement/create_statement.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
+#include "property_graphs_table.hpp"
 #include <duckpgq_extension.hpp>
 
 namespace duckdb {
@@ -164,6 +165,8 @@ CreatePropertyGraphFunction::CreatePropertyGraphBind(
 unique_ptr<GlobalTableFunctionState>
 CreatePropertyGraphFunction::CreatePropertyGraphInit(
     ClientContext &context, TableFunctionInitInput &input) {
+  PropertyGraphsTable::GetOrCreate(context, "duckpgq_property_graph_information")
+      ->InitializeTable(context);
   return make_uniq<CreatePropertyGraphGlobalData>();
 }
 
@@ -179,21 +182,14 @@ void CreatePropertyGraphFunction::CreatePropertyGraphFunc(
     throw Exception(ExceptionType::INVALID,"Registered DuckPGQ state not found");
   }
   auto duckpgq_state = (DuckPGQState *)lookup->second.get();
-  auto create_info = make_uniq<CreateTableInfo>();
-  create_info->table = "duckpgq_property_graph_information";
-  ColumnList columns;
-  auto column = ColumnDefinition("property_graph_name", LogicalType::VARCHAR);
-  columns.AddColumn(std::move(column));
-  create_info->columns = std::move(columns);
-  create_info->on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
-  catalog.CreateTable(context, std::move(create_info));
-  auto &create_table = catalog.GetEntry<TableCatalogEntry>(context, info->catalog, DEFAULT_SCHEMA, "duckpgq_property_graph_information");
 
-  InternalAppender pg_appender(context, create_table);
-  pg_appender.BeginRow();
-  pg_appender.Append(string_t(info->property_graph_name));
-  pg_appender.EndRow();
-  pg_appender.Close();
+  // Create the property graphs table or get it if it already exists.
+
+  // InternalAppender pg_appender(context, create_table);
+  // pg_appender.BeginRow();
+  // pg_appender.Append(string_t(info->property_graph_name));
+  // pg_appender.EndRow();
+  // pg_appender.Close();
   duckpgq_state->registered_property_graphs[info->property_graph_name] =
     info->Copy();
 }
