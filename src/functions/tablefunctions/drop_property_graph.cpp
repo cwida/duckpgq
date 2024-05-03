@@ -3,7 +3,7 @@
 #include <duckpgq_extension.hpp>
 
 namespace duckdb {
-duckdb::unique_ptr<FunctionData>
+unique_ptr<FunctionData>
 DropPropertyGraphFunction::DropPropertyGraphBind(
     ClientContext &context, TableFunctionBindInput &,
     vector<LogicalType> &return_types, vector<string> &names) {
@@ -26,7 +26,7 @@ DropPropertyGraphFunction::DropPropertyGraphBind(
   return make_uniq<DropPropertyGraphBindData>(info);
 }
 
-duckdb::unique_ptr<GlobalTableFunctionState>
+unique_ptr<GlobalTableFunctionState>
 DropPropertyGraphFunction::DropPropertyGraphInit(ClientContext &,
                                                  TableFunctionInitInput &) {
   return make_uniq<DropPropertyGraphGlobalData>();

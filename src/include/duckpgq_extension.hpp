@@ -3,9 +3,6 @@
 #include "duckpgq/common.hpp"
 #include "duckdb/parser/sql_statement.hpp"
 #include "duckdb/parser/parsed_expression.hpp"
-#include "duckdb/parser/query_node.hpp"
-#include "duckdb/parser/column_list.hpp"
-#include "duckdb/parser/simplified_token.hpp"
 #include "duckpgq/compressed_sparse_row.hpp"
 #include "duckdb/parser/parsed_data/create_property_graph_info.hpp"
 #include "duckdb/storage/storage_extension.hpp"
@@ -76,24 +73,9 @@ unique_ptr<Catalog> duckpgq_attach(StorageExtensionInfo *storage_info, ClientCon
 unique_ptr<TransactionManager> duckpgq_create_transaction_manager(StorageExtensionInfo *storage_info,
                                                                 AttachedDatabase &db, Catalog &catalog);
 
-struct DuckPGQStorageExtensionInfo : public StorageExtensionInfo {
-public:
-  DuckPGQStorageExtensionInfo() : StorageExtensionInfo(){};
-  ~DuckPGQStorageExtensionInfo() override = default;
-};
-
-class DuckPGQStorageExtension : public StorageExtension {
-  DuckPGQStorageExtension() : StorageExtension() {
-    attach = duckpgq_attach; // Function to attach to a database
-    create_transaction_manager = duckpgq_create_transaction_manager; // Function to create a transaction manager
-    storage_info = make_shared<DuckPGQStorageExtensionInfo>();
-  }
-};
-
 class DuckPGQState : public ClientContextState {
 public:
-  explicit DuckPGQState(unique_ptr<ParserExtensionParseData> parse_data)
-      : parse_data(std::move(parse_data)) {}
+  explicit DuckPGQState() = default;
 
   void QueryEnd() override {
     parse_data.reset();
