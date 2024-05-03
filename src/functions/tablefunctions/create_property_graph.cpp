@@ -162,6 +162,77 @@ CreatePropertyGraphFunction::CreatePropertyGraphBind(
   return make_uniq<CreatePropertyGraphBindData>(info);
 }
 
+void FillRegisteredPropertyGraphsTable(InternalAppender &property_graph_appender, const CreatePropertyGraphInfo &info) {
+
+  for (auto &vertex_table : info.vertex_tables) {
+    property_graph_appender.BeginRow();
+    property_graph_appender.Append(Value(info.property_graph_name));
+    property_graph_appender.Append(Value(vertex_table->table_name));
+    property_graph_appender.Append(Value(vertex_table->main_label));
+    property_graph_appender.Append(Value(true));
+    property_graph_appender.Append(Value());
+    property_graph_appender.Append(Value());
+    property_graph_appender.Append(Value());
+    property_graph_appender.Append(Value());
+    property_graph_appender.Append(Value());
+    property_graph_appender.Append(Value());
+    if (!vertex_table->discriminator.empty()) {
+      property_graph_appender.Append(Value(vertex_table->discriminator));
+      vector<Value> sub_labels;
+      for (const auto& label : vertex_table->sub_labels) {
+        sub_labels.push_back(Value(label));
+      }
+      property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR, sub_labels));
+    } else {
+      property_graph_appender.Append(Value());
+      property_graph_appender.Append(Value());
+    }
+    property_graph_appender.EndRow();
+  }
+
+  for (auto &edge_table : info.edge_tables) {
+    property_graph_appender.BeginRow();
+    property_graph_appender.Append(Value(info.property_graph_name));
+    property_graph_appender.Append(Value(edge_table->table_name));
+    property_graph_appender.Append(Value(edge_table->main_label));
+    property_graph_appender.Append(Value(false));
+    property_graph_appender.Append(Value(edge_table->source_reference));
+    vector<Value> source_pk_list;
+    for (const auto& col : edge_table->source_pk) {
+      source_pk_list.push_back(Value(col));
+    }
+    property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR,source_pk_list));
+    vector<Value> source_fk_list;
+    for (const auto& col : edge_table->source_fk) {
+      source_fk_list.push_back(Value(col));
+    }
+    property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR,source_fk_list));
+    property_graph_appender.Append(Value(edge_table->destination_reference));
+    vector<Value> destination_pk_list;
+    for (const auto& col : edge_table->destination_pk) {
+      destination_pk_list.push_back(Value(col));
+    }
+    property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR,destination_pk_list));
+    vector<Value> destination_fk_list;
+    for (const auto& col : edge_table->destination_fk) {
+      destination_fk_list.push_back(Value(col));
+    }
+    property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR,destination_fk_list));
+    if (!edge_table->discriminator.empty()) {
+      property_graph_appender.Append(Value(edge_table->discriminator));
+      vector<Value> sub_labels;
+      for (const auto& label : edge_table->sub_labels) {
+        sub_labels.push_back(Value(label));
+      }
+      property_graph_appender.Append(Value::LIST(LogicalType::VARCHAR, sub_labels));
+    } else {
+      property_graph_appender.Append(Value());
+      property_graph_appender.Append(Value());
+    }
+    property_graph_appender.EndRow();
+  }
+}
+
 unique_ptr<GlobalTableFunctionState>
 CreatePropertyGraphFunction::CreatePropertyGraphInit(
     ClientContext &context, TableFunctionInitInput &input) {
@@ -174,7 +245,6 @@ void CreatePropertyGraphFunction::CreatePropertyGraphFunc(
   auto &bind_data = data_p.bind_data->Cast<CreatePropertyGraphBindData>();
 
   auto info = bind_data.create_pg_info;
-  auto &catalog = Catalog::GetCatalog(context, info->catalog);
 
   auto lookup = context.registered_state.find("duckpgq");
   if (lookup == context.registered_state.end()) {
@@ -185,14 +255,8 @@ void CreatePropertyGraphFunction::CreatePropertyGraphFunc(
   auto property_graphs_table = PropertyGraphsTable::GetOrCreate(context, "duckpgq_property_graph_information", info->catalog);
   auto &registered_property_graphs_table = property_graphs_table->GetPropertyGraphTable(context, info->catalog);
   InternalAppender property_graph_appender(context, registered_property_graphs_table);
-  // Create the property graphs table or get it if it already exists.
-
-  // InternalAppender pg_appender(context, create_table);
-  // pg_appender.BeginRow();
-  // pg_appender.Append(string_t(info->property_graph_name));
-  // pg_appender.EndRow();
-  // pg_appender.Close();
-  duckpgq_state->registered_property_graphs[info->property_graph_name] =
-    info->Copy();
+  FillRegisteredPropertyGraphsTable(property_graph_appender, *info);
+  property_graph_appender.Close();
+  duckpgq_state->registered_property_graphs[info->property_graph_name] = info->Copy();
 }
 }; // namespace duckdb

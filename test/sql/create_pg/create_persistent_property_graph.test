@@ -6,6 +6,8 @@ pragma enable_verification
 
 require duckpgq
 
+load __TEST_DIR__/persistent_property_graph.db
+
 statement ok
 import database 'duckdb-pgq/data/SNB0.003';
 
@@ -24,7 +26,22 @@ EDGE TABLES (
                                LABEL workAt_Organisation
    );
 
-query I
+query IIIIIIIIIIII
 select * from duckpgq_property_graph_information;
 ----
-snb
+snb	Organisation	organisation	true	NULL	NULL	NULL	NULL	NULL	NULL	typemask	[company, university]
+snb	Person	person	true	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL
+snb	person_workAt_Organisation	workat_organisation	false	Person	[id]	[PersonId]	Organisation	[id]	[OrganisationId]	NULL	NULL
+snb	Person_knows_person	knows	false	Person	[id]	[Person1Id]	Person	[id]	[Person2Id]	NULL	NULL
+
+restart
+
+require duckpgq
+
+query IIIIIIIIIIII
+select * from duckpgq_property_graph_information;
+----
+snb	Organisation	organisation	true	NULL	NULL	NULL	NULL	NULL	NULL	typemask	[company, university]
+snb	Person	person	true	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL
+snb	person_workAt_Organisation	workat_organisation	false	Person	[id]	[PersonId]	Organisation	[id]	[OrganisationId]	NULL	NULL
+snb	Person_knows_person	knows	false	Person	[id]	[Person1Id]	Person	[id]	[Person2Id]	NULL	NULL
