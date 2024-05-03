@@ -46,15 +46,16 @@ class DuckPGQOnExtensionLoaded : public ExtensionCallback {
   void OnExtensionLoaded(DatabaseInstance &db, const string &name) override {
     auto &connection_manager = db.GetConnectionManager();
     auto connections = connection_manager.GetConnectionList();
-    if (name == "duckpgq") {
-      for (const auto& conn : connections) {
+    if (name != "duckpgq") {
+      return;
+    }
+    for (const auto& conn : connections) {
         auto lookup = conn->registered_state.find("duckpgq");
         if (lookup == conn->registered_state.end()) {
           conn->registered_state["duckpgq"] = make_shared<DuckPGQState>();
         }
       }
     }
-  }
 };
 
 
