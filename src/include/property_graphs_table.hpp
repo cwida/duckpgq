@@ -15,7 +15,7 @@ public:
         static shared_ptr<PropertyGraphsTable> GetOrCreate(ClientContext &context, const string &table_name, const string &catalog_name);
 
         void InitializeTable(ClientContext &context, const string &catalog_name);
-        TableCatalogEntry &GetPropertyGraphTable(ClientContext &context, const string &catalog_name);
+        TableCatalogEntry &GetPropertyGraphTable(ClientContext &context, const string &catalog_name) const;
 
         idx_t GetCurrentFileIndex(idx_t query_id);
 

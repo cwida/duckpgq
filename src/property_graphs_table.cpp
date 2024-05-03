@@ -4,7 +4,7 @@
 
 namespace duckdb {
 
-TableCatalogEntry &PropertyGraphsTable::GetPropertyGraphTable(ClientContext &context, const string &catalog_name) {
+TableCatalogEntry &PropertyGraphsTable::GetPropertyGraphTable(ClientContext &context, const string &catalog_name) const {
   auto &catalog = Catalog::GetCatalog(context, catalog_name);
   auto &table_entry = catalog.GetEntry<TableCatalogEntry>(context, schema, table_name);
   return table_entry;
