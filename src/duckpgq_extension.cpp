@@ -20,13 +20,15 @@
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/parser/tableref/joinref.hpp"
 #include "duckdb/parser/tableref/showref.hpp"
+#include "duckdb/planner/extension_callback.hpp"
+#include "duckdb/catalog/catalog.hpp"
 
-#include "duckdb/parser/statement/extension_statement.hpp"
-
-#include "duckpgq/functions/tablefunctions/drop_property_graph.hpp"
 #include "duckpgq/functions/tablefunctions/create_property_graph.hpp"
 #include "duckpgq/functions/tablefunctions/describe_property_graph.hpp"
+#include "duckpgq/functions/tablefunctions/drop_property_graph.hpp"
 #include "duckpgq/functions/tablefunctions/match.hpp"
+
+#include <duckdb/main/connection_manager.hpp>
 
 namespace duckdb {
 
@@ -40,12 +42,28 @@ inline void DuckpgqScalarFun(DataChunk &args, ExpressionState &state,
       });
 }
 
+class DuckPGQOnExtensionLoaded : public ExtensionCallback {
+  void OnExtensionLoaded(DatabaseInstance &db, const string &name) override {
+    auto &connection_manager = db.GetConnectionManager();
+    auto connections = connection_manager.GetConnectionList();
+    if (name == "duckpgq") {
+      for (const auto& conn : connections) {
+        auto lookup = conn->registered_state.find("duckpgq");
+        if (lookup == conn->registered_state.end()) {
+          conn->registered_state["duckpgq"] = make_shared<DuckPGQState>();
+        }
+      }
+    }
+  }
+};
+
+
 static void LoadInternal(DatabaseInstance &instance) {
   auto &config = DBConfig::GetConfig(instance);
   DuckPGQParserExtension pgq_parser;
   config.parser_extensions.push_back(pgq_parser);
   config.operator_extensions.push_back(make_uniq<DuckPGQOperatorExtension>());
-
+  config.extension_callbacks.push_back(make_uniq<DuckPGQOnExtensionLoaded>());
   Connection con(instance);
   con.BeginTransaction();
 
@@ -83,7 +101,7 @@ void DuckpgqExtension::Load(DuckDB &db) { LoadInternal(*db.instance); }
 
 ParserExtensionParseResult duckpgq_parse(ParserExtensionInfo *info,
                                          const std::string &query) {
-  auto parse_info = (DuckPGQParserExtensionInfo &)(info);
+  auto parse_info = reinterpret_cast<DuckPGQParserExtensionInfo &>(info);
   Parser parser;
   parser.ParseQuery((query[0] == '-') ? query.substr(1, query.length())
                                       : query);
@@ -196,16 +214,14 @@ duckpgq_handle_statement(SQLStatement *statement, DuckPGQState &duckpgq_state) {
 ParserExtensionPlanResult
 duckpgq_plan(ParserExtensionInfo *, ClientContext &context,
              unique_ptr<ParserExtensionParseData> parse_data) {
-  auto duckpgq_state_entry = context.registered_state.find("duckpgq");
-  DuckPGQState *duckpgq_state;
+  const auto duckpgq_state_entry = context.registered_state.find("duckpgq");
   if (duckpgq_state_entry == context.registered_state.end()) {
-    auto state = make_shared<DuckPGQState>(std::move(parse_data));
-    context.registered_state["duckpgq"] = state;
-    duckpgq_state = state.get();
-  } else {
-    duckpgq_state = (DuckPGQState *)duckpgq_state_entry->second.get();
-    duckpgq_state->parse_data = std::move(parse_data);
+    throw MissingExtensionException("DuckpGQ has not been loaded");
   }
+  const auto duckpgq_state =
+    dynamic_pointer_cast<DuckPGQState>(duckpgq_state_entry->second);
+  duckpgq_state->parse_data = std::move(parse_data);
+
   auto duckpgq_parse_data =
       dynamic_cast<DuckPGQParseData *>(duckpgq_state->parse_data.get());
 
